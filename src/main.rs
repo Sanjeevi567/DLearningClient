@@ -1,41 +1,35 @@
 use aws_apis::{
     create_celebrity_single_pdf, create_detect_face_image_pdf, load_credential_from_env,
-    CredentInitialize, MemDbOps, PollyOps, RdsOps, RekognitionOps, S3Ops, SesOps, SimpleMail,
-    Simple_, SnsOps, TemplateMail, Template_, TranscribeOps,
+    CredentInitialize, PollyOps, RekognitionOps, S3Ops, TranscribeOps,
 };
 use colored::Colorize;
 use dotenv::dotenv;
-use image::{self, Rgba};
+use image::{self, GenericImageView, Rgba};
 use imageproc::drawing::draw_text_mut;
 use inquire::{
     ui::{Attributes, RenderConfig, StyleSheet, Styled},
     Confirm, Select, Text,
 };
 use regex::Regex;
-use reqwest::get;
 use rusttype::{Font, Scale};
 use serde_json::{Map, Value};
 use std::env::var;
 use std::fs::{create_dir, read_dir, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::{Read, Write};
+use image_compressor::FolderCompressor;
 
 #[tokio::main]
 async fn main() {
     inquire::set_global_render_config(global_render_config());
     let operations: Vec<&str> = vec![
-        "Verify the Credential\n",
+        "Verify the Credentials\n",
         "Print Credentials Information\n",
         "Amazon Polly Operations\n",
         "Amazon Rekognition Operations\n",
         "Amazon Transcribe\n",
-        "AWS Simple Notification Service(SNS) Operations\n",
-        "AWS Simple Email Service(SES) Operations\n",
-        "S3 Bucket Operations\n",
-        "Relational Database Service(RDS) Operations\n",
-        "MemoryDb Operations\n",
         "Quit the application\n",
     ];
-    //Intial dummy credentials
+    //Initial dummy credentials
     let mut credential = CredentInitialize::default();
     let mut rekognition_ops: RekognitionOps = RekognitionOps::build(credential.build());
     let mut transcribe_ops = TranscribeOps::build(credential.build());
@@ -49,7 +43,7 @@ async fn main() {
             .prompt()
             .unwrap();
         match choice {
-            "Verify the Credential\n" => {
+            "Verify the Credentials\n" => {
                 let choices = Confirm::new("Load the credentials from the configuration file or from environment variables\n")
                           .with_placeholder("Use 'Yes' to load from the environment and 'No' to load from environment variables\n")
                           .with_help_message("Without proper credentials, no operations can be executed successfully")
@@ -68,7 +62,7 @@ async fn main() {
                         polly_ops = PollyOps::build(config.clone());
                         rekognition_ops = RekognitionOps::build(config.clone());
                         transcribe_ops = TranscribeOps::build(config);
-                        println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".blue().bold());
+                        println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
                     }
                     false => {
                         dotenv().ok();
@@ -84,7 +78,26 @@ async fn main() {
                         polly_ops = PollyOps::build(config.clone());
                         rekognition_ops = RekognitionOps::build(config.clone());
                         transcribe_ops = TranscribeOps::build(config);
-                        println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".red().bold());
+                        println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
+                    }
+                }
+            }
+            "Print Credentials Information\n" => {
+                let confirm =
+                    Confirm::new("Are you sure you want to print credential information?\n")
+                        .with_formatter(&|str| format!(".....{str}.....\n"))
+                        .with_placeholder("This is solely for verification purposes\n")
+                        .with_default(false)
+                        .prompt()
+                        .unwrap();
+
+                match confirm {
+                    true => {
+                        println!("Here is your credential informations\n");
+                        println!("{:#?}", credential.get_credentials());
+                    }
+                    false => {
+                        println!("{}\n", "Sure...".green().bold())
                     }
                 }
             }
@@ -105,7 +118,7 @@ async fn main() {
                     )
                     .with_help_message("Do not enclose it with quotation marks or add spaces")
                     .with_vim_mode(true)
-                    .with_page_size(5)
+                    .with_page_size(6)
                     .prompt()
                     .unwrap();
                     match polly_choices {
@@ -200,7 +213,7 @@ async fn main() {
                                                 .write(true)
                                                 .open(&text_to_generate_speech_path)
                                                 .expect(
-                                                    "Error opening the file path you specified\n",
+                                                    "Error Opening the file path you specified\n",
                                                 );
                                             let mut text_to_generate_speech = String::new();
                                             speech_text_data
@@ -232,9 +245,9 @@ async fn main() {
                         }
                         "Generate All Voices Audio in MP3\n" => {
                             let possible_engines =
-                                "Possible Engine Values are: '    standard'\n'    neural'\n";
+                                "Possible Engine Values are:\n '    standard'\n'    neural'\n";
                             let engine_name =
-                                Text::new("Select the engine name for generating all the voices using this engine.\n")
+                                Text::new("Select the engine name for generating all the voices using this engine\n")
                                     .with_placeholder(possible_engines)
                                     .with_formatter(&|input| format!("Received Engine Is: '{input}'\n"))
                                     .prompt()
@@ -251,7 +264,7 @@ async fn main() {
                                     });
                                     let available_langcodes_specified_engine = format!("Language codes for the specified engine: {engine_name}\n{:?}\n",vec_of_lang_codes.join(" | "));
 
-                                    let language_code = Text::new("Select the audio language\n")
+                                    let language_code = Text::new("Select the Audio language\n")
                                         .with_placeholder(&available_langcodes_specified_engine)
                                         .with_formatter(&|input| {
                                             format!("Received Language Code Is: '{input}'\n")
@@ -265,13 +278,13 @@ async fn main() {
                                     let placeholder_info =format!("A total of '{voice_counts}' voices will be generated for the SSML text you provide");
                                     let text_to_generate_speech_path = Text::new("Please specify the path to the SSML text file\n")
                                         .with_placeholder(&placeholder_info)
-                                        .with_help_message("Click here https://tinyurl.com/4pkdrepj to download the sample SSML text file")
+                                        .with_help_message("Click here https://tinyurl.com/bdf5uhce to download the sample SSML text file")
                                         .with_formatter(&|input| format!("Received SSML Text Path Is: '{input}'"))
                                         .prompt()
                                         .unwrap();
-                                    let path_prefix = Text::new("Enter the path prefix under which you want to save the content\n")
+                                    let path_prefix = Text::new("Enter the path prefix under which you want to save the content in the current path\n")
                                         .with_placeholder("For example, 'neural/' or 'standard/ \n")
-                                        .with_formatter(&|input|format!("Received Path Prefix Is: {input}"))
+                                        .with_formatter(&|input|format!("Received Path Prefix Is: {input}\n"))
                                         .with_help_message("The directory will be created anew. Ensure that no directory with the same name as the one you specify already exists, and with each run, select a different directory prefix")
                                         .prompt()
                                         .unwrap();
@@ -313,7 +326,7 @@ async fn main() {
                         "Get the Speech Synthesis Results\n" => {
                             let task_id = Text::new("To obtain speech results, enter the task ID\n")
                                 .with_placeholder("Task ID was generated when calling the StartSpeechSynthesisTask REST API or\nis available in the current directory if you chose the 'Start the speech synthesis task' option\n")
-                                .with_formatter(&|str| format!(".....{str}....."))
+                                .with_formatter(&|str| format!(".....{str}.....\n"))
                                 .prompt()
                                 .unwrap();
                             match task_id.is_empty() {
@@ -494,7 +507,7 @@ async fn main() {
                             .unwrap();
                         
                         let local_path_prefix = Text::new("Provide the local path prefix where your all images are stored\n")
-                            .with_placeholder("Please Note that the images will be resized to 700x700 pixels, but the original images on your computer will remain unchanged\n")
+                            .with_placeholder("Please Note that the images will be resized to 800x600 pixels, but the original images on your computer will remain unchanged\n")
                             .with_formatter(&|input| format!("Received Local Path Prefix: {input}\n"))
                             .with_help_message("These images should be in either '.jpg' or '.png' format")
                             .prompt()
@@ -523,7 +536,7 @@ async fn main() {
                                         let local_image_file_name = format!("{local_path_prefix}/{image_name}");
                                         let image = image::open(&local_image_file_name)
                                             .expect("Error while reading the image from path\n");
-                                        let image = image.resize_exact(700, 700, image::imageops::FilterType::Gaussian);
+                                        let image = image.resize_to_fill(800, 600, image::imageops::FilterType::Gaussian);
                                         let path_and_file_name = format!("{create_temp_dir}{image_name}");
                                         image
                                             .save(&path_and_file_name)
@@ -568,16 +581,17 @@ async fn main() {
                                 "Available keys and path prefix in {bucket_name}\n{:#?}\n",
                                 get_objects
                             );
+                            println!("{}\n","This operation assumes a single face in the image".yellow().bold());
                             let bucket_path_prefix = Text::new("Enter the path prefix within the bucket where the images are stored\n")
                             .with_formatter(&|input| format!("Received Bucket Path Prefix Is: {input}"))
                             .with_placeholder(&available_objects)
-                            .with_help_message("Please ensure that there is no 'face_details_images' directory in the current path where the binary is running")
+                            .with_help_message("Please ensure that there is no 'face_details_images' directory in the current path where the application is running")
                             .prompt()
                             .unwrap();
                         println!("");
                         match std::fs::remove_dir_all("face_details_images/"){
                             Ok(_) => println!("{}\n","face_details_images/ in the current directory have been deleted".red().bold()),
-                            Err(_) => println!("{}\n","Sure no TranscribeOutputs directory exist in the current directory".yellow().bold())
+                            Err(_) => println!("{}\n","Sure no face_details_images directory exist in the current directory".yellow().bold())
                         };
                         let mut file = OpenOptions::new()
                         .create(true)
@@ -641,11 +655,18 @@ async fn main() {
                                 }
                                 //drawing code
                                 let read_image_path = format!("{local_path_prefix}{}", image_name.join(""));
-                                let mut image = image::open(&read_image_path)
+                                let image = image::open(&read_image_path)
                                     .expect("Error while reading the image from path\n");
+                                let image_dimension = image.dimensions();
+                                let mut new_or_old_image = if image_dimension == (800,600){
+                                    image
+                                }else{
+                                    let image_new = image.resize_to_fill(800, 600, image::imageops::FilterType::Gaussian);
+                                    image_new
+                                };
                                 let scale = Scale::uniform(30.0);
                                 let color = Rgba([255u8, 0u8, 0u8, 127u8]);
-                                let data_ = include_bytes!("./../assets/font.ttf");
+                                let data_ = include_bytes!("./assets/font.ttf");
                                 let font =
                                     Font::try_from_bytes(data_).expect("Error Getting Font Bytes");
                                 let gender = format!("Gender: {gender}");
@@ -653,14 +674,14 @@ async fn main() {
                                 let beard = format!("Beard: {beard}");
                                 let smile = format!("Smile: {smile}");
                 
-                                draw_text_mut(&mut image, color, 0, 0, scale, &font, &gender);
-                                draw_text_mut(&mut image, color, 0, 50, scale, &font, &age);
-                                draw_text_mut(&mut image, color, 0, 100, scale, &font, &beard);
-                                draw_text_mut(&mut image, color, 0, 150, scale, &font, &smile);
+                                draw_text_mut(&mut new_or_old_image, color, 0, 0, scale, &font, &gender);
+                                draw_text_mut(&mut new_or_old_image, color, 0, 50, scale, &font, &age);
+                                draw_text_mut(&mut new_or_old_image, color, 0, 100, scale, &font, &beard);
+                                draw_text_mut(&mut new_or_old_image, color, 0, 150, scale, &font, &smile);
                 
                                 let modified_image_path_name =
                                     format!("{face_details_images}{}", image_name.join(""));
-                                image
+                                    new_or_old_image
                                     .save(&modified_image_path_name)
                                     .expect("Error while writing Image file\n");
                             }
@@ -668,6 +689,11 @@ async fn main() {
                     }
                 
                     remove_dir_all("read_images/").expect("Error while Deleting read_images/ temp dir");
+                    create_dir("compressed_images/").expect("Error while creating compressed_images/ dir");
+                    let mut compressor = FolderCompressor::new("face_details_images/", "compressed_images/");
+                    compressor.set_thread_count(8);
+                    compressor.set_delelte_origin(true);
+                    compressor.compress().expect("Error while compressing Images\n");
                     create_detect_face_image_pdf(&bucket_name, &bucket_path_prefix);
                     println!(
                         "{}\n",
@@ -1492,6 +1518,13 @@ async fn main() {
                         _ => println!("Never Reach"),
                     }
                 }
+            }
+            "Quit the application\n" => {
+                credential.empty();
+                break 'main;
+            }
+            _other => {
+                println!("This branch never reach..");
             }
         }
     }
