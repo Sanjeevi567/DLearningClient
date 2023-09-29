@@ -3,24 +3,6 @@
 version = 3
 
 [[package]]
-name = "DLearningClient"
-version = "0.1.0"
-dependencies = [
- "aws_apis",
- "colored",
- "dotenv",
- "image 0.24.7",
- "image_compressor",
- "imageproc",
- "inquire",
- "regex",
- "reqwest",
- "rusttype 0.9.3",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "ab_glyph_rasterizer"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1133,6 +1115,24 @@ name = "discard"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
+
+[[package]]
+name = "dlearningclient"
+version = "0.1.0"
+dependencies = [
+ "aws_apis",
+ "colored",
+ "dotenv",
+ "image 0.24.7",
+ "image_compressor",
+ "imageproc",
+ "inquire",
+ "regex",
+ "reqwest",
+ "rusttype 0.9.3",
+ "serde_json",
+ "tokio",
+]
 
 [[package]]
 name = "dotenv"
