@@ -5,6 +5,7 @@ use aws_apis::{
 use colored::Colorize;
 use dotenv::dotenv;
 use image::{self, GenericImageView, Rgba};
+use image_compressor::FolderCompressor;
 use imageproc::drawing::draw_text_mut;
 use inquire::{
     ui::{Attributes, RenderConfig, StyleSheet, Styled},
@@ -16,7 +17,6 @@ use serde_json::{Map, Value};
 use std::env::var;
 use std::fs::{create_dir, read_dir, read_to_string, remove_dir_all, File, OpenOptions};
 use std::io::{Read, Write};
-use image_compressor::FolderCompressor;
 
 #[tokio::main]
 async fn main() {
