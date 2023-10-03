@@ -10,6 +10,7 @@ This README guide provides step-by-step instructions on how to build a deep lear
   - [Overview](#overview)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+- [AWS CLI Application](#aws-cli-application)
   - [Examples and Documentation](#examples-and-documentation)
 
 ## Prerequisites
@@ -43,6 +44,9 @@ aws configure
 ```
 Follow the prompts to enter your AWS Access Key ID, Secret Access Key, region, and output format.
 
+# AWS CLI Application
+
+This CLI application interacts with various AWS services by utilizing the high-level APIs provided by the [aws_apis](https://github.com/Sanjuvi/aws_apis) repository. The [aws_apis](https://github.com/Sanjuvi/aws_apis) repository encompasses a range of AWS services, including SES (Simple Email Service), RDS (Relational Database Service), S3(Simple Storage Service) and MemoryDB.
 ## Examples and Documentation
 
 For detailed instructions and explanations, please refer to our [comprehensive blog post](https://sanjuvi.github.io/Blog/posts/Deep-Learning-Rust/) that covers the complete usage of this application.
