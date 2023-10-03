@@ -1,0 +1,22 @@
+<speak>
+  <p>
+    <s>Rust</s> is a powerful <say-as interpret-as="spell-out">system programming</say-as> language that focuses on safety and performance.
+  </p>
+  <p>
+    It provides <sub alias="zero-cost">zero-cost</sub> abstractions and has a <emphasis>strong type system</emphasis>.
+  </p>
+  <p>
+    Rust's memory safety guarantees make it a robust choice for <say-as interpret-as="spell-out">systems development</say-as> and <say-as interpret-as="spell-out">low-level programming</say-as>.
+  </p>
+  <break time="3s"/>
+  <amazon:effect name="whispered">
+    But that's not all. <s>WebAssembly</s>, often abbreviated as <say-as interpret-as="spell-out">W-A-S-M</say-as>, is also in the mix.
+  </amazon:effect>
+  <p>
+    WebAssembly is a binary instruction format that runs at near-native speed in web browsers.
+  </p>
+  <p>
+    It allows developers to build high-performance web applications using languages like Rust, alongside JavaScript.
+  </p>
+  <phoneme alphabet="ipa" ph="rʌst">Rust</phoneme> and WebAssembly together provide a powerful combination for modern web development.
+</speak>

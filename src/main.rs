@@ -1,6 +1,7 @@
 use aws_apis::{
-    create_celebrity_single_pdf, create_detect_face_image_pdf, load_credential_from_env,
-    CredentInitialize, PollyOps, RekognitionOps, S3Ops, TranscribeOps,
+    create_celebrity_single_pdf, create_detect_face_image_pdf, create_polly_voice_info_pdf,
+    create_text_only_pdf, load_credential_from_env, CredentInitialize, PollyOps, RekognitionOps,
+    S3Ops, TranscribeOps,
 };
 use colored::Colorize;
 use dotenv::dotenv;
@@ -208,11 +209,10 @@ async fn main() {
                                     ) {
                                         (false, false, false, false, false, false) => {
                                             let mut speech_text_data = OpenOptions::new()
-                                                .create(true)
-                                                .read(true)
-                                                .write(true)
-                                                .open(&text_to_generate_speech_path)
-                                                .expect(
+                                                   .read(true)
+                                                   .write(true)
+                                                   .open(&text_to_generate_speech_path)
+                                                   .expect(
                                                     "Error Opening the file path you specified\n",
                                                 );
                                             let mut text_to_generate_speech = String::new();
@@ -341,61 +341,80 @@ async fn main() {
                                         let text_type = synthesise_info.get_text_type();
                                         let voice_id = synthesise_info.get_voice_id();
                                         let language_code = synthesise_info.get_language_code();
-
-                                        if let (
-                                            Some(status),
-                                            Some(engine),
-                                            Some(uri),
-                                            Some(format),
-                                            Some(text),
-                                            Some(voice),
-                                            Some(code),
-                                        ) = (
-                                            status,
-                                            engine,
-                                            output_uri,
-                                            output_format,
-                                            text_type,
-                                            voice_id,
-                                            language_code,
-                                        ) {
-                                            let colored_status = status.green().bold();
-                                            let colored_engine = engine.green().bold();
-                                            let colored_uri = uri.green().bold();
-                                            let colored_format = format.green().bold();
-                                            let colored_type = text.green().bold();
-                                            let colored_voiceid = voice.green().bold();
-                                            let colored_code = code.green().bold();
-                                            println!(
-                                            "This information is obtained from the AWS REST API\n"
-                                        );
-                                            println!("Task Status: {colored_status}\n");
-                                            println!("Engine Name: {colored_engine}\n");
-                                            println!("Output Format of the synthesized audio: {colored_format}\n");
-                                            println!("Voice ID of the synthesized audio: {colored_voiceid}\n");
-                                            println!(
-                                                "Text type of synthesized audio: {colored_type}\n"
-                                            );
-                                            println!("Language Code for the synthesized audio: {colored_code}\n");
-                                            println!("The URL for the audio will remain valid for up to 72 hours, which is equivalent to 3 days\n");
-                                            println!(
-                                                "URL for the synthesized audio: {colored_uri}\n"
-                                            );
-                                            let mut file = OpenOptions::new()
-                                                .create(true)
-                                                .read(true)
-                                                .write(true)
-                                                .open("audio_uri.txt")
-                                                .unwrap();
-                                            let uri_data =
-                                                format!("URL for the synthesized audio: {uri}\n");
-
-                                            file.write_all(uri_data.as_bytes())
-                                                .expect("Error while writing...");
-                                            println!(
-                                                "{}\n",
-                                                "URL is writen to current directory".green().bold()
-                                            );
+                                        let status_reason =
+                                            synthesise_info.get_task_status_reason();
+                                        match status.unwrap_or("No Status Is Available".into()) {
+                                            "scheduled" => {
+                                                println!("{}\n","Current task status is 'scheduled,' so please try again after some time.\nThe result is only available when the status is 'completed'".yellow().bold());
+                                            }
+                                            "inProgress" => {
+                                                println!("{}\n","Current task status is 'in progress,' so please try again after some time.\nThe result is only available when the status is 'completed'".yellow().bold());
+                                            }
+                                            "completed" => {
+                                                if let (
+                                                    Some(status),
+                                                    Some(engine),
+                                                    Some(uri),
+                                                    Some(format),
+                                                    Some(text),
+                                                    Some(voice),
+                                                    Some(code),
+                                                ) = (
+                                                    status,
+                                                    engine,
+                                                    output_uri,
+                                                    output_format,
+                                                    text_type,
+                                                    voice_id,
+                                                    language_code,
+                                                ) {
+                                                    let colored_status = status.green().bold();
+                                                    let colored_engine = engine.green().bold();
+                                                    let colored_uri = uri.green().bold();
+                                                    let colored_format = format.green().bold();
+                                                    let colored_type = text.green().bold();
+                                                    let colored_voiceid = voice.green().bold();
+                                                    let colored_code = code.green().bold();
+                                                    println!("Task Status: {colored_status}");
+                                                    println!("Engine Name: {colored_engine}");
+                                                    println!("Output Format of the synthesized audio: {colored_format}");
+                                                    println!("Voice ID of the synthesized audio: {colored_voiceid}");
+                                                    println!(
+                                                        "Text type of synthesized audio: {colored_type}"
+                                                    );
+                                                    println!("Language Code for the synthesized audio: {colored_code}");
+                                                    println!(
+                                                        "URL for the synthesized audio: {colored_uri}"
+                                                    );
+                                                    let mut file = OpenOptions::new()
+                                                        .create(true)
+                                                        .read(true)
+                                                        .write(true)
+                                                        .open("audio_uri.txt")
+                                                        .unwrap();
+                                                    let uri_data = format!(
+                                                        "URL for the synthesized audio: {uri}\n"
+                                                    );
+                                                    file.write_all(uri_data.as_bytes())
+                                                        .expect("Error while writting...");
+                                                    println!(
+                                                        "{}\n",
+                                                        "The URL is written to the current directory.".green().bold()
+                                                    );
+                                                    println!("{}","The bucket can't be accessed right away; you have to make it public or only accessible in the web console".yellow().bold());
+                                                    println!("{}\n","Alternatively, you can make the object accessible using the 'Modify Object Visibility' option in the S3 menu or download them using the 'Download Object from bucket' option".yellow().bold());
+                                                }
+                                            }
+                                            "failed" => {
+                                                println!("{}", "The task has failed".red().bold());
+                                                println!("{}", "Reason, if any".yellow().bold());
+                                                println!(
+                                                    "{}\n",
+                                                    status_reason
+                                                        .unwrap_or("No reason is available")
+                                                );
+                                            }
+                                            _ => println!("Shoudn't reach"),
                                         }
                                     }
                                 }
@@ -439,6 +458,15 @@ async fn main() {
                             let colored_file_name = "'voices_info.txt'".green().bold();
                             let msg = format!("There is a lot more information available, so it only displays the first three pieces of voice information.\n\nAll the voice information is saved to the current directory as {colored_file_name} instead of cluttering the command-line window");
                             println!("{}\n", msg);
+                            let headers = vec![
+                                "Gender of Voice",
+                                "Voice ID",
+                                "Language Code",
+                                "Language Name",
+                                "Voice Name",
+                                "Supported Engine",
+                            ];
+                            let mut values = Vec::new();
                             info.into_iter()
                 .for_each(|voice_info|{
                  if let (Some(gender),Some(voiceid),Some(lang_code),Some(lang_name),Some(voice_name),Some(engines)) = 
@@ -451,13 +479,19 @@ async fn main() {
                      lang_code,
                      lang_name,
                      voice_name,
-                     engines.into_iter().collect::<String>()
+                     engines.iter().map(|str|*str).collect::<Vec<&str>>().join("")
                  );
-                 
+                  values.push(gender.to_string());
+                  values.push(voiceid.to_string());
+                  values.push(lang_code.to_string());
+                  values.push(lang_name.to_string());
+                  values.push(voice_name.to_string());
+                  values.push(engines.into_iter().collect::<String>());
                   file.write_all(data.as_bytes())
                   .expect("Error while writing data...")
                  }
                 });
+                            create_polly_voice_info_pdf(headers, values);
 
                             println!(
                                 "{}\n",
@@ -743,44 +777,41 @@ async fn main() {
                                             let face_info = rekognition_ops
                                                 .detect_faces(&object, &bucket_name)
                                                 .await;
+                                            let mut file = OpenOptions::new()
+                                            .create(true)
+                                            .read(true)
+                                            .write(true)
+                                            .open("FaceDetail.txt")
+                                            .expect("Error while creating file\n");
                                             face_info.into_iter().for_each(|mut facedetails| {
                                                 let gender = facedetails.gender();
                                                 let age = facedetails.age_range();
                                                 let smile = facedetails.smile();
                                                 let beard = facedetails.beard();
+                                                let bounding_box = facedetails.bounding_box();
 
                                                 if let (
                                                     (Some(gender), Some(gender_confidence)),
                                                     (Some(age), Some(age_confidence)),
                                                     (Some(smile), Some(smile_confidence)),
                                                     (Some(beard), Some(beard_confidence)),
-                                                ) = (gender, age, smile, beard)
+                                                    (Some(width),Some(height),Some(left),Some(top))
+                                                ) = (gender, age, smile, beard,bounding_box)
                                                 {
-                                                    println!(
-                                                        "Gender: {} and Confidence Level: {}\n",
-                                                        gender.green().bold(),
-                                                        gender_confidence
-                                                            .to_string()
-                                                            .green()
-                                                            .bold()
-                                                    );
-                                                    println!(
-                                                        "Age: {} and Confidence Level: {}\n",
-                                                        age.to_string().green().bold(),
-                                                        age_confidence.to_string().green().bold()
-                                                    );
-                                                    println!(
-                                                        "Beard: {} and Confidence Level: {}\n",
-                                                        beard.to_string().green().bold(),
-                                                        beard_confidence.to_string().green().bold()
-                                                    );
-                                                    println!(
-                                                        "Smile: {} and Confidence Level: {}\n",
-                                                        smile.to_string().green().bold(),
-                                                        smile_confidence.to_string().green().bold()
-                                                    );
+                                                    let buf = format!("Gender: {gender} and Confidence Level: {gender_confidence}\nAge Range:\nLowest Prediction Age: {age} and Highest Prediction Age: {age_confidence}\nSmile: {smile} and Confidence Levle: {smile_confidence}\nBeard: {beard} and Confidence: {beard_confidence}\nBounding Box Details:\nWidth: {width}, Height: {height}, Left: {left},Top: {top}");
+                                                    file.write_all(buf.as_bytes()).unwrap();
+
                                                 }
                                             });
+                                            match std::fs::File::open("FaceDetail.txt") {
+                                                Ok(_) => println!(
+                                                    "{}\n",
+                                                    "The text file, containing the text details, has been successfully written to the current directory"
+                                                        .green()
+                                                        .bold()
+                                                ),
+                                                Err(_) => println!("{}\n", "Error while writing File".red().bold()),
+                                            }
                                         }
                                         true => {
                                             println!(
@@ -802,7 +833,7 @@ async fn main() {
                             let blob = "https://docs.rs/aws-sdk-rekognition/latest/aws_sdk_rekognition/primitives/struct.Blob.html";
                             let help_message = format!("S3 buckets are employed instead of {blob} types for processing texts");
                             let bucket_name = Text::new(
-                                "Select the bucket name where the text video is stored\n",
+                                "Please select the bucket name where the image is stored, which contains the text within it\n",
                             )
                             .with_placeholder(&available_buckets)
                             .with_formatter(&|str| format!(".....{str}.....\n"))
@@ -817,7 +848,7 @@ async fn main() {
                                         "Available keys in {bucket_name}\n{:#?}\n",
                                         get_objects
                                     );
-                                    let object = Text::new("Please input the key or path of the text video within the chosen bucket or copy it from the placeholder information\n")
+                                    let object = Text::new("Input the key or path of the image from the chosen bucket, or copy it from the placeholder information\n")
                                         .with_placeholder(&available_objects)
                                         .with_formatter(&|str| format!(".....{str}.....\n"))
                                         .with_help_message("Don't put quotation marks around the key when pasting")
@@ -828,6 +859,13 @@ async fn main() {
                                             let text_info = rekognition_ops
                                                 .detect_texts(&bucket_name, &object)
                                                 .await;
+                                            let mut texts_only = Vec::new();
+                                            let mut file = OpenOptions::new()
+                                            .create(true)
+                                            .read(true)
+                                            .write(true)
+                                            .open("Texts.txt")
+                                            .expect("Error while creating file\n");
                                             text_info.into_iter().for_each(|mut textdetails| {
                                                 let texts = textdetails.detected_text();
                                                 let text_type = textdetails.text_type();
@@ -839,20 +877,21 @@ async fn main() {
                                                     Some(confidence),
                                                 ) = (texts, text_type, confidence)
                                                 {
-                                                    println!(
-                                                        "Detected Text: {}\n",
-                                                        text.green().bold(),
-                                                    );
-                                                    println!(
-                                                        "Text Type: {}\n",
-                                                        text_type.green().bold(),
-                                                    );
-                                                    println!(
-                                                        "Confidence Level: {}\n",
-                                                        confidence.to_string().green().bold(),
-                                                    );
+                                                    let buf = format!("Detected Text: {text}\nText Type: {text_type}\nText Confidence: {confidence}\n");
+                                                    file.write_all(buf.as_bytes()).unwrap();
+                                                    texts_only.push(text);
                                                 }
                                             });
+                                            match std::fs::File::open("Texts.txt") {
+                                                Ok(_) => println!(
+                                                    "{}\n",
+                                                    "The text file, containing the text details, has been successfully written to the current directory"
+                                                        .green()
+                                                        .bold()
+                                                ),
+                                                Err(_) => println!("{}\n", "Error while writing File".red().bold()),
+                                            }
+                                            create_text_only_pdf(texts_only);
                                         }
                                         true => {
                                             println!(

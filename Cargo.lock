@@ -724,7 +724,7 @@ dependencies = [
 [[package]]
 name = "aws_apis"
 version = "0.1.0"
-source = "git+https://github.com/Sanjuvi/aws_apis.git#ef5233e8cc45574beeb0a3117c211a1a01809d72"
+source = "git+https://github.com/Sanjuvi/aws_apis.git#da28f69532986223e44b7bed2862a535a5bc4d9d"
 dependencies = [
  "aws-config",
  "aws-credential-types",
