@@ -24,8 +24,8 @@ Before you begin, ensure you have the following prerequisites:
 1. Clone this repository:
 
    ```bash
-   git clone https://github.com/your/repo.git
-   cd repo
+   git clone https://github.com/Sanjuvi/DLearningClient.git
+   cd DLearningClient
    ```
 
 2. Build the application:
