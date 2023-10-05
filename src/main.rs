@@ -1,7 +1,7 @@
 use aws_apis::{
     create_celebrity_single_pdf, create_detect_face_image_pdf, create_polly_voice_info_pdf,
     create_text_only_pdf, load_credential_from_env, CredentInitialize, PollyOps, RekognitionOps,
-    S3Ops, TranscribeOps,
+    S3Ops, TranscribeOps, TranslateOps,
 };
 use colored::Colorize;
 use dotenv::dotenv;
@@ -27,6 +27,7 @@ async fn main() {
         "Print Credentials Information\n",
         "Amazon Polly Operations\n",
         "Amazon Rekognition Operations\n",
+        "Amazon Translate\n",
         "Amazon Transcribe\n",
         "Quit the application\n",
     ];
@@ -36,11 +37,12 @@ async fn main() {
     let mut transcribe_ops = TranscribeOps::build(credential.build());
     let mut polly_ops: PollyOps = PollyOps::build(credential.build());
     let mut s3_ops: S3Ops = S3Ops::build(credential.build());
+    let mut translate_ops = TranslateOps::build(credential.build());
 
     'main: loop {
         let choice = Select::new("Select the option to execute the operation\n", operations.clone())
             .with_help_message("Don't enclose data in quotation marks or add spaces around it in any operations,\nexcept when working with template data.")
-            .with_page_size(10)
+            .with_page_size(7)
             .prompt()
             .unwrap();
         match choice {
@@ -62,7 +64,8 @@ async fn main() {
                         s3_ops = S3Ops::build(config.clone());
                         polly_ops = PollyOps::build(config.clone());
                         rekognition_ops = RekognitionOps::build(config.clone());
-                        transcribe_ops = TranscribeOps::build(config);
+                        transcribe_ops = TranscribeOps::build(config.clone());
+                        translate_ops = TranslateOps::build(config);
                         println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
                     }
                     false => {
@@ -78,7 +81,8 @@ async fn main() {
                         s3_ops = S3Ops::build(config.clone());
                         polly_ops = PollyOps::build(config.clone());
                         rekognition_ops = RekognitionOps::build(config.clone());
-                        transcribe_ops = TranscribeOps::build(config);
+                        transcribe_ops = TranscribeOps::build(config.clone());
+                        translate_ops = TranslateOps::build(config);
                         println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
                     }
                 }
@@ -209,10 +213,10 @@ async fn main() {
                                     ) {
                                         (false, false, false, false, false, false) => {
                                             let mut speech_text_data = OpenOptions::new()
-                                                   .read(true)
-                                                   .write(true)
-                                                   .open(&text_to_generate_speech_path)
-                                                   .expect(
+                                                .read(true)
+                                                .write(true)
+                                                .open(&text_to_generate_speech_path)
+                                                .expect(
                                                     "Error Opening the file path you specified\n",
                                                 );
                                             let mut text_to_generate_speech = String::new();
@@ -1287,6 +1291,228 @@ async fn main() {
                         }
                        
                             
+                        }
+                        "Return to the Main Menu\n" => continue 'main,
+                        _ => println!("Never Reach"),
+                    }
+                }
+            }
+            "Amazon Translate\n" => {
+                let translate_opss = vec![
+                    "Get Language Info\n",
+                    "Translate Text\n",
+                    "Translate Document\n",
+                    "Start Text Translation Job\n",
+                    "Describe Text Translation Job\n",
+                    "List Text Translation Jobs\n",
+                    "Return to the Main Menu\n",
+                ];
+                loop {
+                    let translate_choices = Select::new(
+                        "Select the option to execute the operation\n",
+                        translate_opss.clone(),
+                    )
+                    .with_page_size(6)
+                    .with_help_message(
+                        "Only six of the most commonly used APIs from the translation service are currently being utilized",
+                    )
+                    .prompt()
+                    .unwrap();
+                    match translate_choices {
+                        "Get Language Info\n" => {
+                            translate_ops.list_languages(true).await;
+                        }
+                        "Translate Text\n" => {
+                            let path_to_the_text_data = Text::new("Please provide the path to the text file for which you would like the translation\n")
+                                .with_placeholder("The provided text should only be in plain text format; no other formats should be used in this option\n")
+                                .with_formatter(&|input| format!("Received Text Path: {}\n", input))
+                                .prompt()
+                                .unwrap();
+                            let (lang_codes, lang_names) =
+                                translate_ops.list_languages(false).await;
+                            let mut placeholder_info = Vec::new();
+                            for (lang_code, lang_name) in
+                                lang_codes.into_iter().zip(lang_names.into_iter())
+                            {
+                                let format_lang_code_and_name =
+                                    format!("{}-{}", lang_code, lang_name);
+                                placeholder_info.push(format_lang_code_and_name);
+                            }
+                            let target_lang_code = Text::new("Provide the target language code for which you want to receive the translation in return\n")
+                                .with_placeholder(&placeholder_info.join(" | "))
+                                .with_help_message("Copy the target language code from the placeholder that corresponds to the language name for which you want a translation")
+                                .with_formatter(&|input| {
+                                    format!("Received Target Language Code to Translate: {}\n", input)
+                                })
+                                .prompt()
+                                .unwrap();
+                            match (
+                                path_to_the_text_data.is_empty(),
+                                target_lang_code.is_empty(),
+                            ) {
+                                (false, false) => {
+                                    translate_ops
+                                        .translate_text(&path_to_the_text_data, &target_lang_code)
+                                        .await;
+                                }
+                                _ => println!(
+                                    "{}\n",
+                                    "Ensure that no fields are left empty".red().bold()
+                                ),
+                            }
+                        }
+                        "Translate Document\n" => {
+                            let document_type = Text::new("Please specify the type of document for which you need translation\n")
+                            .with_placeholder("Valid Document Types\n   'Plain' - Plain Text Document\n   'Word' -Word Document\n   'Html' -Html Document\n")
+                            .with_formatter(&|input| format!("Received Document Type: {}\n", input))
+                            .with_help_message("Copy the document type inside the single quotes depending on the document you provide next")
+                            .prompt()
+                            .unwrap();
+                            let path_to_the_document = Text::new("Please provide the path to the Document file for which you would like the translation\n")
+                            .with_placeholder("The format of the document should reflect the type of document you provided above\n")
+                            .with_formatter(&|input| format!("Received Document Path: {}\n", input))
+                            .prompt()
+                            .unwrap();
+                            let (lang_codes, lang_names) =
+                                translate_ops.list_languages(false).await;
+                            let mut placeholder_info = Vec::new();
+                            for (lang_code, lang_name) in
+                                lang_codes.into_iter().zip(lang_names.into_iter())
+                            {
+                                let format_lang_code_and_name =
+                                    format!("{}-{}", lang_code, lang_name);
+                                placeholder_info.push(format_lang_code_and_name);
+                            }
+                            let target_lang_code = Text::new("Provide the target language code for which you want to receive the translation in return\n")
+                            .with_placeholder(&placeholder_info.join(" | "))
+                            .with_help_message("Copy the target language code from the placeholder that corresponds to the language name for which you want a translation")
+                            .with_formatter(&|input| {
+                                format!("Received Target Language Code to Translate: {}\n", input)
+                            })
+                            .prompt()
+                            .unwrap();
+                            match (
+                                document_type.is_empty(),
+                                path_to_the_document.is_empty(),
+                                target_lang_code.is_empty(),
+                            ) {
+                                (false, false, false) => {
+                                    translate_ops
+                                        .translate_document(
+                                            &document_type,
+                                            &path_to_the_document,
+                                            &target_lang_code,
+                                        )
+                                        .await;
+                                }
+                                _ => println!(
+                                    "{}\n",
+                                    "Ensure that no fields are left empty".red().bold()
+                                ),
+                            }
+                        }
+                        "Start Text Translation Job\n" => {
+                            let job_name = Text::new("Please choose a unique job name that describes the translation task\n")
+                            .with_placeholder("You are responsible for selecting unique descriptive job name\n")
+                            .with_formatter(&|input| format!("Received Job Name: {}\n", input))
+                            .prompt()
+                            .unwrap();
+                            let document_type = Text::new("Specify the document type you have in the S3 bucket\n")
+                            .with_placeholder("Valid Document Types\n   'Plain' - Plain Text File\n   'Word' -Word Document\n   'Html' -Html Document\n   'Ppt' -PPT Document\n   'Xlsx' -XLSX Document\n   'Xlf' -Lossless XLF Document\n")
+                            .with_formatter(&|input| format!("Received Document Type: {}\n", input))
+                            .with_help_message("You have the option to batch-translate files of the same format. If you need to translate different formats, please start a new job")
+                            .prompt()
+                            .unwrap();
+                            let (lang_codes, lang_names) =
+                                translate_ops.list_languages(false).await;
+                            let mut placeholder_info = Vec::new();
+                            for (lang_code, lang_name) in
+                                lang_codes.into_iter().zip(lang_names.into_iter())
+                            {
+                                let format_lang_code_and_name =
+                                    format!("{}-{}", lang_code, lang_name);
+                                placeholder_info.push(format_lang_code_and_name);
+                            }
+                            let get_bucket_lists = s3_ops.get_buckets().await;
+                            let existing_buckets = format!(
+                                "These buckets are already in your account:\n{:#?}\n",
+                                get_bucket_lists
+                            );
+                            let input_s3_uri = Text::new("Specify the bucket path prefix where all documents of the selected format are stored\n")
+                           .with_placeholder(&existing_buckets)
+                           .with_default("s3://your_bucket_name/folder_name_which_contains_multiple_document_files")
+                           .with_help_message("Inside the bucket's path prefix folder, you can have nested subfolders and multiple documents of the same type, each with different content")
+                           .with_formatter(&|input| {
+                               format!("Received Input S3 URI: {}\n", input)
+                           })
+                           .prompt()
+                           .unwrap();
+                            let target_lang_codes = Text::new("You can specify up to 10 target language codes.To specify multiple codes, use spaces to separate the target language codes\n")
+                            .with_placeholder(&placeholder_info.join(" | "))
+                            .with_help_message("First, copy the language code from the placeholder, write multiple language codes with spaces somewhere, and then paste them here without quotation marks")
+                            .with_formatter(&|input| {
+                                format!("Received Target Language Codes: {}\n", input)
+                            })
+                            .prompt()
+                            .unwrap();
+
+                            let output_s3_uri = Text::new("Please provide the output S3 path prefix URL where all translation results will be stored\n")
+                           .with_placeholder(&existing_buckets)
+                           .with_default("s3://your_bucket_name/new_or_existing_folder_name")
+                           .with_help_message("It should be in the format ---s3://bucket_name/new_folder_name---")
+                           .with_formatter(&|input| {
+                               format!("Received Output S3 URI: {}\n", input)
+                           })
+                           .prompt()
+                           .unwrap();
+                            match (
+                                job_name.is_empty(),
+                                target_lang_codes.is_empty(),
+                                input_s3_uri.is_empty(),
+                                document_type.is_empty(),
+                                output_s3_uri.is_empty(),
+                            ) {
+                                (false, false, false, false, false) => {
+                                    let mut build_target_lang_codes = Vec::new();
+                                    for lang_code in target_lang_codes.split(" ") {
+                                        build_target_lang_codes.push(lang_code.to_string());
+                                    }
+                                    translate_ops
+                                        .start_text_translation_job(
+                                            &job_name,
+                                            Some(build_target_lang_codes),
+                                            &input_s3_uri,
+                                            &document_type,
+                                            &output_s3_uri,
+                                        )
+                                        .await;
+                                }
+                                _ => println!(
+                                    "{}\n",
+                                    "Ensure that no fields are left empty".red().bold()
+                                ),
+                            }
+                        }
+                        "Describe Text Translation Job\n" => {
+                            println!("");
+                            println!("{}\n","If you are unable to access the Job ID at all, then exit this operation with empty input.\nAfterward, execute the ---List Text Translation Jobs--- option, which will provide all the Job information without requiring any input from you".yellow().bold());
+                            let job_id = Text::new("To obtain details of the Translation Job, please enter the Job ID\n")
+                            .with_placeholder("The Job ID is generated when you execute the ---Start Text Translation Job--- option\n")
+                            .with_formatter(&|input| format!("Received Job ID: {}\n", input))
+                            .prompt()
+                            .unwrap();
+                            match job_id.is_empty() {
+                                false => {
+                                    translate_ops.describe_text_translation_job(&job_id).await;
+                                }
+                                true => println!(
+                                    "{}\n",
+                                    "Ensure that no fields are left empty".red().bold()
+                                ),
+                            }
+                        }
+                        "List Text Translation Jobs\n" => {
+                            translate_ops.list_translation_jobs().await;
                         }
                         "Return to the Main Menu\n" => continue 'main,
                         _ => println!("Never Reach"),

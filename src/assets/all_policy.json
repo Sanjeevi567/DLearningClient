@@ -9,7 +9,8 @@
           "rekognition:*",
           "transcribe:*",
           "polly:*",
-          "translate:*"
+          "translate:*",
+          "comprehend:DetectDominantLanguage"
         ],
         "Resource" : "*"
       }
