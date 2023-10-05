@@ -91,8 +91,8 @@ async fn main() {
                 let confirm =
                     Confirm::new("Are you sure you want to print credential information?\n")
                         .with_formatter(&|str| format!(".....{str}.....\n"))
-                        .with_placeholder("This is solely for verification purposes\n")
-                        .with_default(false)
+                        .with_placeholder("Type 'Yes' to view the credentials, or 'No' to not view the credentials\n")
+                        .with_help_message("This is solely for verification purposes")
                         .prompt()
                         .unwrap();
 
@@ -1312,7 +1312,7 @@ async fn main() {
                         "Select the option to execute the operation\n",
                         translate_opss.clone(),
                     )
-                    .with_page_size(6)
+                    .with_page_size(7)
                     .with_help_message(
                         "Only six of the most commonly used APIs from the translation service are currently being utilized",
                     )
@@ -1328,14 +1328,14 @@ async fn main() {
                                 .with_formatter(&|input| format!("Received Text Path: {}\n", input))
                                 .prompt()
                                 .unwrap();
-                            let (lang_codes, lang_names) =
+                            let (lang_names, lang_codes) =
                                 translate_ops.list_languages(false).await;
                             let mut placeholder_info = Vec::new();
                             for (lang_code, lang_name) in
                                 lang_codes.into_iter().zip(lang_names.into_iter())
                             {
                                 let format_lang_code_and_name =
-                                    format!("{}-{}", lang_code, lang_name);
+                                    format!("{}: {}", lang_name,lang_code);
                                 placeholder_info.push(format_lang_code_and_name);
                             }
                             let target_lang_code = Text::new("Provide the target language code for which you want to receive the translation in return\n")
@@ -1373,14 +1373,14 @@ async fn main() {
                             .with_formatter(&|input| format!("Received Document Path: {}\n", input))
                             .prompt()
                             .unwrap();
-                            let (lang_codes, lang_names) =
+                            let (lang_names, lang_codes) =
                                 translate_ops.list_languages(false).await;
                             let mut placeholder_info = Vec::new();
                             for (lang_code, lang_name) in
                                 lang_codes.into_iter().zip(lang_names.into_iter())
                             {
                                 let format_lang_code_and_name =
-                                    format!("{}-{}", lang_code, lang_name);
+                                    format!("{}: {}",lang_name,lang_code);
                                 placeholder_info.push(format_lang_code_and_name);
                             }
                             let target_lang_code = Text::new("Provide the target language code for which you want to receive the translation in return\n")
@@ -1423,14 +1423,14 @@ async fn main() {
                             .with_help_message("You have the option to batch-translate files of the same format. If you need to translate different formats, please start a new job")
                             .prompt()
                             .unwrap();
-                            let (lang_codes, lang_names) =
+                            let (lang_names, lang_codes) =
                                 translate_ops.list_languages(false).await;
                             let mut placeholder_info = Vec::new();
                             for (lang_code, lang_name) in
                                 lang_codes.into_iter().zip(lang_names.into_iter())
                             {
                                 let format_lang_code_and_name =
-                                    format!("{}-{}", lang_code, lang_name);
+                                    format!("{}: {}", lang_name,lang_code);
                                 placeholder_info.push(format_lang_code_and_name);
                             }
                             let get_bucket_lists = s3_ops.get_buckets().await;
@@ -1440,14 +1440,14 @@ async fn main() {
                             );
                             let input_s3_uri = Text::new("Specify the bucket path prefix where all documents of the selected format are stored\n")
                            .with_placeholder(&existing_buckets)
-                           .with_default("s3://your_bucket_name/folder_name_which_contains_multiple_document_files")
+                           .with_initial_value("s3://your_bucket_name/folder_name_which_contains_multiple_document_files")
                            .with_help_message("Inside the bucket's path prefix folder, you can have nested subfolders and multiple documents of the same type, each with different content")
                            .with_formatter(&|input| {
                                format!("Received Input S3 URI: {}\n", input)
                            })
                            .prompt()
                            .unwrap();
-                            let target_lang_codes = Text::new("You can specify up to 10 target language codes.To specify multiple codes, use spaces to separate the target language codes\n")
+                            let target_lang_codes = Text::new("You can specify up to 10 target language codes.To specify multiple codes, use single space to separate the target language codes\n")
                             .with_placeholder(&placeholder_info.join(" | "))
                             .with_help_message("First, copy the language code from the placeholder, write multiple language codes with spaces somewhere, and then paste them here without quotation marks")
                             .with_formatter(&|input| {
@@ -1458,10 +1458,17 @@ async fn main() {
 
                             let output_s3_uri = Text::new("Please provide the output S3 path prefix URL where all translation results will be stored\n")
                            .with_placeholder(&existing_buckets)
-                           .with_default("s3://your_bucket_name/new_or_existing_folder_name")
                            .with_help_message("It should be in the format ---s3://bucket_name/new_folder_name---")
                            .with_formatter(&|input| {
                                format!("Received Output S3 URI: {}\n", input)
+                           })
+                           .prompt()
+                           .unwrap();
+                            let role_arn = Text::new("Please provide the Data Access Role ARN that grants Amazon Translate read access to your S3 input data\n")
+                           .with_placeholder("An example of what it should look like is: ---arn:aws:iam::account_id:role/role_name---\n")
+                           .with_help_message("Click here to learn more")
+                           .with_formatter(&|input| {
+                               format!("Received Data Access Role Arn: {}\n", input)
                            })
                            .prompt()
                            .unwrap();
@@ -1471,8 +1478,9 @@ async fn main() {
                                 input_s3_uri.is_empty(),
                                 document_type.is_empty(),
                                 output_s3_uri.is_empty(),
+                                role_arn.is_empty(),
                             ) {
-                                (false, false, false, false, false) => {
+                                (false, false, false, false, false, false) => {
                                     let mut build_target_lang_codes = Vec::new();
                                     for lang_code in target_lang_codes.split(" ") {
                                         build_target_lang_codes.push(lang_code.to_string());
@@ -1484,6 +1492,7 @@ async fn main() {
                                             &input_s3_uri,
                                             &document_type,
                                             &output_s3_uri,
+                                            &role_arn,
                                         )
                                         .await;
                                 }
