@@ -2,3 +2,4 @@ arn:aws:iam::aws:policy/AmazonRekognitionFullAccess
 arn:aws:iam::aws:policy/AmazonS3FullAccess
 arn:aws:iam::aws:policy/AmazonPollyFullAccess
 arn:aws:iam::aws:policy/AmazonTranscribeFullAccess
+arn:aws:iam::aws:policy/TranslateFullAccess
