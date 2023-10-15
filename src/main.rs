@@ -33,11 +33,12 @@ async fn main() {
     ];
     //Initial dummy credentials
     let mut credential = CredentInitialize::default();
-    let mut rekognition_ops: RekognitionOps = RekognitionOps::build(credential.build());
-    let mut transcribe_ops = TranscribeOps::build(credential.build());
-    let mut polly_ops: PollyOps = PollyOps::build(credential.build());
-    let mut s3_ops: S3Ops = S3Ops::build(credential.build());
-    let mut translate_ops = TranslateOps::build(credential.build());
+    let mut sdk_config = credential.build();
+    let mut rekognition_ops: RekognitionOps = RekognitionOps::build(&sdk_config);
+    let mut transcribe_ops = TranscribeOps::build(&sdk_config);
+    let mut polly_ops: PollyOps = PollyOps::build(&sdk_config);
+    let mut s3_ops: S3Ops = S3Ops::build(&sdk_config);
+    let mut translate_ops = TranslateOps::build(&sdk_config);
 
     'main: loop {
         let choice = Select::new("Select the option to execute the operation\n", operations.clone())
@@ -60,12 +61,12 @@ async fn main() {
                             credentials.secret_access_key(),
                             region.as_deref(),
                         );
-                        let config = credential.build();
-                        s3_ops = S3Ops::build(config.clone());
-                        polly_ops = PollyOps::build(config.clone());
-                        rekognition_ops = RekognitionOps::build(config.clone());
-                        transcribe_ops = TranscribeOps::build(config.clone());
-                        translate_ops = TranslateOps::build(config);
+                        sdk_config = credential.build();
+                        s3_ops = S3Ops::build(&sdk_config);
+                        polly_ops = PollyOps::build(&sdk_config);
+                        rekognition_ops = RekognitionOps::build(&sdk_config);
+                        transcribe_ops = TranscribeOps::build(&sdk_config);
+                        translate_ops = TranslateOps::build(&sdk_config);
                         println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
                     }
                     false => {
@@ -77,12 +78,12 @@ async fn main() {
                         let region = var("AWS_DEFAULT_REGION")
                         .expect("Ensure that the 'AWS_DEFAULT_REGION' environment variable is set, and its value is provided by AWS\n");
                         credential.update(&access_key, &secret_key, Some(&region));
-                        let config = credential.build();
-                        s3_ops = S3Ops::build(config.clone());
-                        polly_ops = PollyOps::build(config.clone());
-                        rekognition_ops = RekognitionOps::build(config.clone());
-                        transcribe_ops = TranscribeOps::build(config.clone());
-                        translate_ops = TranslateOps::build(config);
+                        sdk_config = credential.build();
+                        s3_ops = S3Ops::build(&sdk_config);
+                        polly_ops = PollyOps::build(&sdk_config);
+                        rekognition_ops = RekognitionOps::build(&sdk_config);
+                        transcribe_ops = TranscribeOps::build(&sdk_config);
+                        translate_ops = TranslateOps::build(&sdk_config);
                         println!("{}\n","Please verify the credentials by printing the credential information before proceeding with any operations".yellow().bold());
                     }
                 }
